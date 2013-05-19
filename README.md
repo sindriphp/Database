@@ -2,7 +2,7 @@
 
 **current version 0.6**
 
-[Documentation]( http://doc.sindriphp.de/bifroest/)
+[Documentation]( http://sindriphp.github.io/Database/ )
 
 ### Development ###
 If you want to produce the docs then you need nodejs installed with beautiful-docs
