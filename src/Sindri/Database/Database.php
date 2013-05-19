@@ -19,6 +19,7 @@
 namespace Sindri\Database;
 
 use \Closure;
+use \Sindri\Database\Profiler\Profiler;
 use \Sindri\Database\Query\QueryInterface;
 use \Sindri\Database\Query\OpenQuery;
 use \Sindri\Database\Query\ProxyQuery;
@@ -37,6 +38,14 @@ class Database {
      * @var string
      */
     private $dateTimeFormat = 'Y-m-d H:i:s';
+    /**
+     * @var int
+     */
+    private $queryId = 0;
+    /**
+     * @var Profiler[]
+     */
+    private $profiler = array();
 
     /**
      * @param Config $config
@@ -75,9 +84,17 @@ class Database {
      * @return QueryInterface
      */
     public function query($queryString) {
-        $openQuery = new OpenQuery($this->connection, $queryString, $this->dateTimeFormat);
+        $openQuery = new OpenQuery($this->getId(), $this->connection, $queryString, $this->dateTimeFormat);
+        $openQuery->addProfiler($this->profiler);
 
         return new ProxyQuery($openQuery);
+    }
+
+    /**
+     * @return int
+     */
+    private function getId() {
+        return ++$this->queryId;
     }
 
     /**
@@ -89,6 +106,13 @@ class Database {
 
     public function close() {
         $this->connection->close();
+    }
+
+    /**
+     * @param Profiler $profiler
+     */
+    public function addProfiler(Profiler $profiler) {
+        $this->profiler[] = $profiler;
     }
 
 }

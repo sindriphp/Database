@@ -62,7 +62,7 @@ class PreparedQueryTest extends PHPUnit_Framework_TestCase {
      * @return OpenQuery
      */
     private function getQuery($queryString, $dateString = 'Y-m-d H:i:s') {
-        $openQuery = new OpenQuery($this->connection, $queryString, $dateString);
+        $openQuery = new OpenQuery(1, $this->connection, $queryString, $dateString);
         return new ProxyQuery($openQuery);
     }
 

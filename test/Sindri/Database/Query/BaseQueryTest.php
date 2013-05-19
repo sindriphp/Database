@@ -20,7 +20,10 @@ namespace Sindri\Database\Query;
 
 use \PHPUnit_Framework_TestCase;
 use \Sindri\Database\ActionQueue;
+use \Sindri\Database\Config;
 use \Sindri\Database\Connection;
+use \Sindri\Database\Database;
+use \Sindri\Database\Profiler\Profiler;
 use \Sindri\Database\Query\OpenQuery;
 use \PDO;
 use \DateTime;
@@ -71,7 +74,7 @@ class BaseQueryTest extends PHPUnit_Framework_TestCase {
      * @return OpenQuery
      */
     private function getQuery($queryString, $dateString = 'Y-m-d H:i:s') {
-        $openQuery = new OpenQuery($this->connection, $queryString, $dateString);
+        $openQuery = new OpenQuery(1, $this->connection, $queryString, $dateString);
         return new ProxyQuery($openQuery);
     }
 
@@ -370,5 +373,24 @@ class BaseQueryTest extends PHPUnit_Framework_TestCase {
             'username' => 'testuser',
             'password' => 'asdfasdfasdfasdfasdfasdfasdfasdf',
         ), $result);
+    }
+
+    public function testProfiler() {
+        $config = new Config();
+        $config->setDsn('sqlite::memory:');
+        $database = new Database($config);
+
+        $profiler = new Profiler();
+
+        $database->addProfiler($profiler);
+
+        $database->query("SELECT 1")
+            ->fetchAll();
+
+        $result = $profiler->getLogData();
+        $result = $result[0]; // PHP 5.3 compatible
+
+        $this->assertSame(1, $result->getId());
+        $this->assertSame("SELECT 1", $result->getQueryString());
     }
 }

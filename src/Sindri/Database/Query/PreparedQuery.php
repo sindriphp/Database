@@ -28,16 +28,18 @@ use \Sindri\Database\Exception\QueryException;
 class PreparedQuery extends BaseQuery {
 
     /**
+     * @param int $id
      * @param PDOStatement $statement
      * @param string $dateTimeFormat
      * @param string[] $keys
      * @param array $arrayBindingsCounter
      */
-    public function __construct(PDOStatement $statement, $dateTimeFormat, array $keys, array $arrayBindingsCounter) {
+    public function __construct($id, PDOStatement $statement, $dateTimeFormat, array $keys, array $arrayBindingsCounter) {
         $this->statement = $statement;
         $this->dateTimeFormat = $dateTimeFormat;
         $this->keys = $keys;
         $this->arrayBindingsCounter = $arrayBindingsCounter;
+        $this->setId($id);
     }
 
     /**
@@ -45,7 +47,7 @@ class PreparedQuery extends BaseQuery {
      * @return QueryInterface
      */
     public function execute() {
-        $this->doBindings();
+        $this->executeStatment();
         $this->resetBindings();
 
         return $this;

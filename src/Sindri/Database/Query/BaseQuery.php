@@ -27,8 +27,11 @@ use \Sindri\Database\Exception\DatabaseException;
 use \Sindri\Database\Exception\InvalidArgumentException;
 use \Sindri\Database\Binding\ValueBinding;
 use \Sindri\Database\Connection;
+use \Sindri\Database\Profiler\Profiler;
+use \Sindri\Database\Profiler\Data as ProfilerData;
+use \Sindri\Database\Profiler\Notifier as ProfilerNotifier;
 
-abstract class BaseQuery implements QueryInterface {
+abstract class BaseQuery implements QueryInterface, ProfilerNotifier {
 
     /**
      * @var Connection
@@ -58,6 +61,14 @@ abstract class BaseQuery implements QueryInterface {
      * @var PDOStatement
      */
     protected $statement;
+    /**
+     * @var int
+     */
+    private $id;
+    /**
+     * @var Profiler[]
+     */
+    protected $profiler = array();
 
     /**
      * @param string $key
@@ -77,6 +88,20 @@ abstract class BaseQuery implements QueryInterface {
     public function setDateTimeFormat($format) {
         $this->dateTimeFormat = $format;
         return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getId() {
+        return $this->id;
+    }
+
+    /**
+     * @param int $id
+     */
+    protected function setId($id) {
+        $this->id = $id;
     }
 
     /**
@@ -209,14 +234,16 @@ abstract class BaseQuery implements QueryInterface {
         $this->bindings = array();
     }
 
-    protected function doBindings() {
+    protected function executeStatment() {
         try {
             foreach ($this->bindings as $binding) {
                 $key = ':' . $binding->getKey();
                 $this->statement->bindValue($key, $binding->getValue(), $binding->getType());
             }
-
+            $start = microtime(true);
             $this->statement->execute();
+            $time = microtime(true) - $start;
+            $this->notifyProfilingData($this->getId(), $this->statement->queryString, $time);
         } catch (PDOException $ex) {
             throw new DatabaseException("The query failed with message: '" . $ex->getMessage() . "'", null, $ex);
         }
@@ -227,8 +254,6 @@ abstract class BaseQuery implements QueryInterface {
      * @throws DatabaseException
      */
     public function fetchAll() {
-        $this->execute();
-
         return $this->statement->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -239,7 +264,6 @@ abstract class BaseQuery implements QueryInterface {
      * @throws DatabaseException
      */
     public function fetchValue($nullValue = '') {
-        $this->execute();
         $retVal = $this->statement->fetchColumn();
 
         return ($retVal === false) ? $nullValue : $retVal;
@@ -252,7 +276,6 @@ abstract class BaseQuery implements QueryInterface {
      * @return array
      */
     public function fetchColumn($column = 0) {
-        $this->execute();
         $tmp = $this->statement->fetchAll(PDO::FETCH_NUM);
 
         $retVal = array();
@@ -272,4 +295,23 @@ abstract class BaseQuery implements QueryInterface {
 
         return (count($tmp) > 0) ? $tmp[0] : $tmp;
     }
+
+    /**
+     * @param array $profiler
+     */
+    public function addProfiler(array $profiler) {
+        $this->profiler = $profiler;
+    }
+
+    /**
+     * @param int $id
+     * @param string $queryString
+     * @param int $time
+     */
+    public function notifyProfilingData($id, $queryString, $time) {
+        foreach ($this->profiler as $profiler) {
+            $profiler->addEntry(new ProfilerData($id, $queryString, round($time * 1000, 3)));
+        }
+    }
+
 }

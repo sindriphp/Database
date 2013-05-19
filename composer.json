@@ -1,7 +1,7 @@
 {
     "name": "sindriphp/database",
     "description": "Database Component (Bifröst)",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "type": "library",
     "keywords": ["sindri", "sindriphp", "bifroest", "database"],
     "homepage": "http://www.sindriphp.de",

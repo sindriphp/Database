@@ -28,14 +28,16 @@ use \Sindri\Database\Exception\DatabaseException;
 class OpenQuery extends BaseQuery {
 
     /**
+     * @param int $id
      * @param Connection $connection
      * @param string $queryString
      * @param string $dateTimeFormat
      */
-    public function __construct(Connection $connection, $queryString, $dateTimeFormat) {
+    public function __construct($id, Connection $connection, $queryString, $dateTimeFormat) {
         $this->connection = $connection;
         $this->queryString = $queryString;
         $this->dateTimeFormat = $dateTimeFormat;
+        $this->setId($id);
     }
 
     /**
@@ -112,7 +114,9 @@ class OpenQuery extends BaseQuery {
         }
         $this->statement = $this->connection->prepare($this->queryString);
 
-        return new PreparedQuery($this->statement, $this->dateTimeFormat, $this->keys, $this->arrayBindingsCounter);
+        $preparedQuery = new PreparedQuery($this->getId(), $this->statement, $this->dateTimeFormat, $this->keys, $this->arrayBindingsCounter);
+        $preparedQuery->addProfiler($this->profiler);
+        return $preparedQuery;
     }
 
 
@@ -122,10 +126,12 @@ class OpenQuery extends BaseQuery {
      */
     public function execute() {
         $this->statement = $this->connection->prepare($this->queryString);
-        $this->doBindings();
+        $this->executeStatment();
         $this->resetBindings();
 
-        return new PreparedQuery($this->statement, $this->dateTimeFormat, $this->keys, $this->arrayBindingsCounter);
+        $preparedQuery = new PreparedQuery($this->getId(), $this->statement, $this->dateTimeFormat, $this->keys, $this->arrayBindingsCounter);
+        $preparedQuery->addProfiler($this->profiler);
+        return $preparedQuery;
     }
 
 }
