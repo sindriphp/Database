@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>Database Component (Bifröst)</title>
+    <link type="text/css" rel="stylesheet" href="http://fonts.googleapis.com/css?family=Droid+Sans&subset=latin">
+    <link type="text/css" rel="stylesheet" href="css/reset.css">
+    <link type="text/css" rel="stylesheet" href="css/docs.css">
+    <link type="text/css" rel="stylesheet" href="css/print.css" media="print">
+    <link type="text/css" rel="stylesheet" href="http://yandex.st/highlightjs/6.1/styles/zenburn.min.css">
+    
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.3/jquery.min.js"></script>
+    <script type="text/javascript" src="http://yandex.st/highlightjs/6.1/highlight.min.js"></script>
+    
+    <script type="text/javascript" src="js/viewer.js"></script>
+</head>
+<body>
+    <div id="page">
+        <a name="top" />
+        
+            <header id="header">
+                <h1><a href="">Database Component (Bifröst)</a></h1>
+            </header>
+        
+        
+
+
+    <div id="sidebar">
+        <nav id="toc">
+            
+    <ol>
+    
+        <li>
+            <a href="database.html#database">Database</a>
+            
+                
+    <ol>
+    
+</ol>
+
+            
+        </li>
+    
+        <li>
+            <a href="query.html#query">Query</a>
+            
+                
+    <ol>
+    
+</ol>
+
+            
+        </li>
+    
+        <li>
+            <a href="transactions.html#transactions">Transactions</a>
+            
+                
+    <ol>
+    
+</ol>
+
+            
+        </li>
+    
+        <li>
+            <a href="storedprocedures.html#stored-procedures">Stored Procedures</a>
+            
+                
+    <ol>
+    
+</ol>
+
+            
+        </li>
+    
+        <li>
+            <a href="examples.html#examples">Examples</a>
+            
+                
+    <ol>
+    
+</ol>
+
+            
+        </li>
+    
+</ol>
+
+        </nav>
+    </div>
+
+<article id="content">
+    <a name="query"></a><h2>Query</h2>
+<p>The Query class use a fluent interface. It´s designed to be nice, logical and natural. It enforces strong typing, so you need to parse and cast your values. Internally it uses the PreparedStatement from PDO. In that combination, you should be not vulnerable to SQL Injection and type problems with your SQL (&#39;1&#39; != 1). Look at <strong>Examples</strong> if you wan´t to see usage examples.</p>
+<a name="how-to-use-bifrst-to-query-your-database"></a><h3>How to use Bifröst to query your database</h3>
+<p>You need a Bifröst instance and then you call the method &quot;query&quot; with your SQL query. Bifröst will automatically handle the rest for you (like establish connection to the database, is this a new query?, can I reuse this already prepared query, etc).</p>
+<a name="example"></a><h4>Example</h4>
+<pre><code>    ...
+    $database = new Database($config);
+    $database-&gt;query(&quot;SELECT * FROM `users`&quot;)
+        -&gt;fetchAll();</code></pre>
+<a name="usage"></a><h3>Usage</h3>
+<p>You define your query with placeholders. A placeholder should be uppercase and start with a double dash like:   :ID, :START_DATE, :END_DATE, :USERNAME.</p>
+<pre><code>SELECT * FROM `users` WHERE id = :ID</code></pre>
+<p>Now you can bind values to the :ID placeholder with the bind methods. <strong>Caution</strong>: You don´t use the double dash in the key with the bind methods! )</p>
+<pre><code>    $database = new Database($config);
+    $database-&gt;query(&#39;SELECT * FROM `users` WHERE id = :ID&#39;)
+        -&gt;bindInt(&#39;ID&#39;, 1)</code></pre>
+<a name="bind-methods"></a><h4>Bind methods</h4>
+<p>The bind methods needs the key they should binded to and the value which should be bindet. The value must be typesafe or else it will throw an \Sindri\Database\Exception\InvalidArgumentException </p>
+<pre><code>    bindInt($key, $value)
+    bindFloat($key, $value)
+    bindString($key, $value)</code></pre>
+<p>If your query is in prepared state (Fetch-Method, execute(), prepare(...) ) and you try to bind a key, which is not known to it, it will throw an \Sindri\Database\Exception\InvalidArgumentException.</p>
+<a name="bindarray-method"></a><h3>BindArray method</h3>
+<p>The bind array method does some internal handling. It determines the type of the values and bind with the correct method. It´s also possible to bind an array with no elements. This will not break your SQL query if you write your query in the correct syntax. The syntax is</p>
+<pre><code>    &quot;SELECT * FROM `users` WHERE id IN (:IDS)&quot;</code></pre>
+<p>It´s important to understand how Array-Binding works. If you bind an array with 4 entries to the key IDS Bifröst will transform it in something like ID_0, ID_1, ID_2, ID_3 and bind its value to it. When the query get´s in prepared state (Fetch-Method, execute(), prepare(...) ), then you get an \Sindri\Database\Exception\InvalidArgumentException, if you try to reuse the query with a differend sized array!</p>
+<pre><code>    bindArray($key, $value)</code></pre>
+<a name="binddate-methods"></a><h3>BindDate methods</h3>
+<p>There are two bindDate methods. One will bind your DateTime object with <strong>your</strong> timezone setting the other one will bind your DateTime object <strong>converted</strong> to the UTC timezone. It is possible to modfy for the <strong>complete</strong> query the Date-Time-Format without changing the default Date-Time-Format of your Database. If you call setDateTimeFormat, <strong>this will change the format for the whole life-cycle</strong> (think about prepared queries!)</p>
+<pre><code>    setDateTimeFormat($format)</code></pre>
+<p>Will use your timezone settings</p>
+<pre><code>    bindDate($key, DateTime $date)</code></pre>
+<p>Will convert the date in UTC <strong>(does not modify your object!)</strong></p>
+<pre><code>    bindDateUTC($key, DateTime $date)</code></pre>
+<a name="execute-method"></a><h3>Execute method</h3>
+<p>This method is for UPDATE, INSERST, etc. which will not fetch value from the database. This method will establish a connection. After calling execute you can´t register any new &quot;actionAfterConnect&quot;. The query is also be prepared now. This is important for Array-Binding. See &quot;BindArray method&quot; for more informationen about that topic.</p>
+<pre><code>    execute()</code></pre>
+<a name="prepare-method"></a><h3>Prepare method</h3>
+<p>With the prepare method, you can prepare your sql queries for later usage. The syntax may looks a bit weired at first, so.</p>
+<p>Say we want a query which selects users which ids in the array(1,2,3,4) and a register date later then 2013-01-01. We need this query more then one time and want to prepare it.</p>
+<pre><code>    $userQuery = $database-&gt;query(&quot;SELECT * FROM `users` 
+        WHERE id IN (:IDS) and `registered` &gt; :STARTDATE&quot;)
+        -&gt;prepare(array(
+            array(&#39;IDS&#39;, 4), // Important! bindArray with key IDS and 4 entries
+            &#39;STARTDATE&#39; // The key STARTDATE is now known
+        ));
+// now we can run the prepared query like
+$userQuery-&gt;bindArray(&#39;IDS&#39;, array(1,2,3,4)
+    -&gt;bindDateUTC(&#39;STARTDATE&#39;, new Date(&#39;2013-01-01&#39;))
+    -&gt;fetchAll();</code></pre>
+<p>Puh... the method:</p>
+<pre><code>    prepare(array $bindings)</code></pre>
+<a name="fetch-methods"></a><h3>Fetch methods</h3>
+<p>How you will get your query results.</p>
+<p>This will return all the result in assoc</p>
+<pre><code>    fetchAll()</code></pre>
+<p>This will just return the first value of the first row. If there is no result, it will return the $nullValue (default &#39;&#39;)</p>
+<pre><code>    fetchValue($nullValue = &#39;&#39;)</code></pre>
+<p>Thi will return the $column as an array</p>
+<pre><code>    fetchColumn($column = 0)</code></pre>
+<p>This will return a row in assoc</p>
+<pre><code>    fetchRow()</code></pre>
+
+</article>
+
+        <footer id="footer">
+            Powered by <a href="http://github.com/maximebf/beautiful-docs">beautiful-docs</a> -
+            <a href="#top">Back to top</a> - <a href="all.html">Everything on a single page</a>
+            - <a href="?print=1">Print current page</a> - <a href="all.html?print=1">Print all pages</a>
+            
+                <a href="https://github.com/sindriphp/Database" id="fork-me-on-github">Fork me on Github</a>
+            
+        </footer>
+    </div>
+</body>
+</html>

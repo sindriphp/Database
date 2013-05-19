@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>Database Component (Bifröst)</title>
+    <link type="text/css" rel="stylesheet" href="http://fonts.googleapis.com/css?family=Droid+Sans&subset=latin">
+    <link type="text/css" rel="stylesheet" href="css/reset.css">
+    <link type="text/css" rel="stylesheet" href="css/docs.css">
+    <link type="text/css" rel="stylesheet" href="css/print.css" media="print">
+    <link type="text/css" rel="stylesheet" href="http://yandex.st/highlightjs/6.1/styles/zenburn.min.css">
+    
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.3/jquery.min.js"></script>
+    <script type="text/javascript" src="http://yandex.st/highlightjs/6.1/highlight.min.js"></script>
+    
+    <script type="text/javascript" src="js/viewer.js"></script>
+</head>
+<body>
+    <div id="page">
+        <a name="top" />
+        
+            <header id="header">
+                <h1><a href="">Database Component (Bifröst)</a></h1>
+            </header>
+        
+        
+
+
+    <div id="sidebar">
+        <nav id="toc">
+            
+    <ol>
+    
+        <li>
+            <a href="database.html#database">Database</a>
+            
+                
+    <ol>
+    
+</ol>
+
+            
+        </li>
+    
+        <li>
+            <a href="query.html#query">Query</a>
+            
+                
+    <ol>
+    
+</ol>
+
+            
+        </li>
+    
+        <li>
+            <a href="transactions.html#transactions">Transactions</a>
+            
+                
+    <ol>
+    
+</ol>
+
+            
+        </li>
+    
+        <li>
+            <a href="storedprocedures.html#stored-procedures">Stored Procedures</a>
+            
+                
+    <ol>
+    
+</ol>
+
+            
+        </li>
+    
+        <li>
+            <a href="examples.html#examples">Examples</a>
+            
+                
+    <ol>
+    
+</ol>
+
+            
+        </li>
+    
+</ol>
+
+        </nav>
+    </div>
+
+<article id="content">
+    <a name="database"></a><h2>Database</h2>
+<p>Bifröst is <strong>not an ORM</strong> and it will <strong>never be one</strong>! It´s usage is to have a nice and secure way to write queries for an PDO supported database. If you don´t use database specific commands it will be, thanks to pdo, database independent.</p>
+<a name="how-create-a-new-database-instance"></a><h3>How Create a new database instance</h3>
+<p>To create a new Bifröst instance you need a Config object.
+The Config object have different options like username, password, the DSN for the connection and the default DateTimeFormat for your Database. You will use the default PDO DSN string without username and password! You also can add PDO options with the method</p>
+<p><strong>Don´t overwrite the ErrorMode (PDO::ATTR_ERRMODE)!</strong></p>
+<pre><code>$config-&gt;addPdoOption(&#39;PDO::MYSQL_ATTR_INIT_COMMAND&#39;, &#39;SET NAMES utf8&#39;);</code></pre>
+<a name="examples-for-pdo-dsn"></a><h3>Examples for PDO DSN:</h3>
+<p><em>mysql (<a href="http://php.net/manual/en/ref.pdo-mysql.connection.php">PHP Documentation</a>)</em></p>
+<ul>
+<li>mysql:host=localhost;dbname=testdb</li>
+<li>mysql:host=localhost;port=3307;dbname=testdb</li>
+<li>mysql:unix_socket=/tmp/mysql.sock;dbname=testdb</li>
+</ul>
+<p><em>sqlite (<a href="http://www.php.net/manual/en/ref.pdo-sqlite.connection.php">PHP Documentation</a>)</em></p>
+<ul>
+<li>sqlite:/opt/databases/mydb.sq3</li>
+<li>sqlite::memory:</li>
+</ul>
+<a name="usage"></a><h3>Usage:</h3>
+<pre><code>    $config = new Config();
+    $config-&gt;setUsername(&#39;username&#39;);
+    $config-&gt;setPassword(&#39;secrect&#39;);
+    $config-&gt;setDsn(&#39;mysql:host=localhost;dbname=testdb&#39;);
+    $config-&gt;setDateTimeFormat(&#39;Y-m-d H:i:s&#39;); // This is the default
+    $config-&gt;addPdoOption(&#39;PDO::MYSQL_ATTR_INIT_COMMAND&#39;, &#39;SET NAMES utf8&#39;);
+    $database = new Database($config);</code></pre>
+<p><strong>You should not switch between databases with a SQL command. This will cause troubles! Bifröst ist designed to be used with multiple database instances.</strong></p>
+<p>Bifröst will not establish a connection to the database until it is really required to. That means it´s cheap to produce all your database objects -but still you should use a factory or DI-Container. I tried also to look at detail on the object count references to be long running process compatible without memory leaks.</p>
+<p>For Example:</p>
+<pre><code>    $masterConfig = new Config();
+    ...
+    $slaveConfig = new Config();
+    ...
+    $masterDatabase = new Database($masterConfig);
+    $slaveDatabase = new Database($slaveConfig);
+
+    // or
+
+    $product1Config = new Config();
+    ...
+    $product2Config = newConfig();
+    ...
+    $product1Database = new Database($product1Config);
+    $product2Database = new Database($product2Config);</code></pre>
+<a name="run-sql"></a><h3>Run SQL</h3>
+<p>You can run directly SQL with the Bifröst instance. This is usefully for fixtures, init scripts and UnitTests which will create a new database or alter some tables, etc. You should use this method just for that case!</p>
+<pre><code>...
+$db = new Database($config);
+    $createSQL = file_get_contents(__DIR__ . &#39;/fixtures.sql&#39;);
+    $db-&gt;run($createSQL);</code></pre>
+<a name="addactionafterconnect"></a><h3>AddActionAfterConnect</h3>
+<p>Some PDO drivers (namely SQLite) support the possibility to <a href="http://www.php.net/manual/de/pdo.sqlitecreateaggregate.php">add</a> functions which are available to SQL. This feature is currently marked as experimental but Bifröst supports it. It´s important to know, that the actions will be added after a connection is established and just can be added <strong>before</strong> a connection is established. The Method addActionAfterConnect awaits a Closure (PHP 5.3 compatible) which gets a PDO instance as first param.</p>
+<p>Example:</p>
+<pre><code>    $config = new Config();
+    $config-&gt;setUsername(&#39;user&#39;);
+    $config-&gt;setDsn(&#39;sqlite::memory:&#39;);
+    $sqliteDb = new Database($config);
+
+    $sqliteDb-&gt;addActionAfterConnect(function (PDO $pdo) {
+        $pdo-&gt;sqliteCreateFunction(&#39;md5rev&#39;, function ($string) {
+            return strrev(md5($string));
+            }, 1);
+    });
+
+    $sqliteDb-&gt;run(self::$createSQL);
+
+    $row = $sqliteDb-&gt;query(&quot;SELECT username, md5rev(username) FROM  users 
+                            WHERE id = :ID&quot;)
+        -&gt;bindInt(&#39;ID&#39;, 1)
+        -&gt;fetchRow();</code></pre>
+
+</article>
+
+        <footer id="footer">
+            Powered by <a href="http://github.com/maximebf/beautiful-docs">beautiful-docs</a> -
+            <a href="#top">Back to top</a> - <a href="all.html">Everything on a single page</a>
+            - <a href="?print=1">Print current page</a> - <a href="all.html?print=1">Print all pages</a>
+            
+                <a href="https://github.com/sindriphp/Database" id="fork-me-on-github">Fork me on Github</a>
+            
+        </footer>
+    </div>
+</body>
+</html>

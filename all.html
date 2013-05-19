@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>Database Component (Bifröst)</title>
+    <link type="text/css" rel="stylesheet" href="http://fonts.googleapis.com/css?family=Droid+Sans&subset=latin">
+    <link type="text/css" rel="stylesheet" href="css/reset.css">
+    <link type="text/css" rel="stylesheet" href="css/docs.css">
+    <link type="text/css" rel="stylesheet" href="css/print.css" media="print">
+    <link type="text/css" rel="stylesheet" href="http://yandex.st/highlightjs/6.1/styles/zenburn.min.css">
+    
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.3/jquery.min.js"></script>
+    <script type="text/javascript" src="http://yandex.st/highlightjs/6.1/highlight.min.js"></script>
+    
+    <script type="text/javascript" src="js/viewer.js"></script>
+</head>
+<body>
+    <div id="page">
+        <a name="top" />
+        
+            <header id="header">
+                <h1><a href="">Database Component (Bifröst)</a></h1>
+            </header>
+        
+        <div id='content'><a name="database"></a><h2>Database</h2>
+<p>Bifröst is <strong>not an ORM</strong> and it will <strong>never be one</strong>! It´s usage is to have a nice and secure way to write queries for an PDO supported database. If you don´t use database specific commands it will be, thanks to pdo, database independent.</p>
+<a name="how-create-a-new-database-instance"></a><h3>How Create a new database instance</h3>
+<p>To create a new Bifröst instance you need a Config object.
+The Config object have different options like username, password, the DSN for the connection and the default DateTimeFormat for your Database. You will use the default PDO DSN string without username and password! You also can add PDO options with the method</p>
+<p><strong>Don´t overwrite the ErrorMode (PDO::ATTR_ERRMODE)!</strong></p>
+<pre><code>$config-&gt;addPdoOption(&#39;PDO::MYSQL_ATTR_INIT_COMMAND&#39;, &#39;SET NAMES utf8&#39;);</code></pre>
+<a name="examples-for-pdo-dsn"></a><h3>Examples for PDO DSN:</h3>
+<p><em>mysql (<a href="http://php.net/manual/en/ref.pdo-mysql.connection.php">PHP Documentation</a>)</em></p>
+<ul>
+<li>mysql:host=localhost;dbname=testdb</li>
+<li>mysql:host=localhost;port=3307;dbname=testdb</li>
+<li>mysql:unix_socket=/tmp/mysql.sock;dbname=testdb</li>
+</ul>
+<p><em>sqlite (<a href="http://www.php.net/manual/en/ref.pdo-sqlite.connection.php">PHP Documentation</a>)</em></p>
+<ul>
+<li>sqlite:/opt/databases/mydb.sq3</li>
+<li>sqlite::memory:</li>
+</ul>
+<a name="usage"></a><h3>Usage:</h3>
+<pre><code>    $config = new Config();
+    $config-&gt;setUsername(&#39;username&#39;);
+    $config-&gt;setPassword(&#39;secrect&#39;);
+    $config-&gt;setDsn(&#39;mysql:host=localhost;dbname=testdb&#39;);
+    $config-&gt;setDateTimeFormat(&#39;Y-m-d H:i:s&#39;); // This is the default
+    $config-&gt;addPdoOption(&#39;PDO::MYSQL_ATTR_INIT_COMMAND&#39;, &#39;SET NAMES utf8&#39;);
+    $database = new Database($config);</code></pre>
+<p><strong>You should not switch between databases with a SQL command. This will cause troubles! Bifröst ist designed to be used with multiple database instances.</strong></p>
+<p>Bifröst will not establish a connection to the database until it is really required to. That means it´s cheap to produce all your database objects -but still you should use a factory or DI-Container. I tried also to look at detail on the object count references to be long running process compatible without memory leaks.</p>
+<p>For Example:</p>
+<pre><code>    $masterConfig = new Config();
+    ...
+    $slaveConfig = new Config();
+    ...
+    $masterDatabase = new Database($masterConfig);
+    $slaveDatabase = new Database($slaveConfig);
+
+    // or
+
+    $product1Config = new Config();
+    ...
+    $product2Config = newConfig();
+    ...
+    $product1Database = new Database($product1Config);
+    $product2Database = new Database($product2Config);</code></pre>
+<a name="run-sql"></a><h3>Run SQL</h3>
+<p>You can run directly SQL with the Bifröst instance. This is usefully for fixtures, init scripts and UnitTests which will create a new database or alter some tables, etc. You should use this method just for that case!</p>
+<pre><code>...
+$db = new Database($config);
+    $createSQL = file_get_contents(__DIR__ . &#39;/fixtures.sql&#39;);
+    $db-&gt;run($createSQL);</code></pre>
+<a name="addactionafterconnect"></a><h3>AddActionAfterConnect</h3>
+<p>Some PDO drivers (namely SQLite) support the possibility to <a href="http://www.php.net/manual/de/pdo.sqlitecreateaggregate.php">add</a> functions which are available to SQL. This feature is currently marked as experimental but Bifröst supports it. It´s important to know, that the actions will be added after a connection is established and just can be added <strong>before</strong> a connection is established. The Method addActionAfterConnect awaits a Closure (PHP 5.3 compatible) which gets a PDO instance as first param.</p>
+<p>Example:</p>
+<pre><code>    $config = new Config();
+    $config-&gt;setUsername(&#39;user&#39;);
+    $config-&gt;setDsn(&#39;sqlite::memory:&#39;);
+    $sqliteDb = new Database($config);
+
+    $sqliteDb-&gt;addActionAfterConnect(function (PDO $pdo) {
+        $pdo-&gt;sqliteCreateFunction(&#39;md5rev&#39;, function ($string) {
+            return strrev(md5($string));
+            }, 1);
+    });
+
+    $sqliteDb-&gt;run(self::$createSQL);
+
+    $row = $sqliteDb-&gt;query(&quot;SELECT username, md5rev(username) FROM  users 
+                            WHERE id = :ID&quot;)
+        -&gt;bindInt(&#39;ID&#39;, 1)
+        -&gt;fetchRow();</code></pre>
+
+<a name="query"></a><h2>Query</h2>
+<p>The Query class use a fluent interface. It´s designed to be nice, logical and natural. It enforces strong typing, so you need to parse and cast your values. Internally it uses the PreparedStatement from PDO. In that combination, you should be not vulnerable to SQL Injection and type problems with your SQL (&#39;1&#39; != 1). Look at <strong>Examples</strong> if you wan´t to see usage examples.</p>
+<a name="how-to-use-bifrst-to-query-your-database"></a><h3>How to use Bifröst to query your database</h3>
+<p>You need a Bifröst instance and then you call the method &quot;query&quot; with your SQL query. Bifröst will automatically handle the rest for you (like establish connection to the database, is this a new query?, can I reuse this already prepared query, etc).</p>
+<a name="example"></a><h4>Example</h4>
+<pre><code>    ...
+    $database = new Database($config);
+    $database-&gt;query(&quot;SELECT * FROM `users`&quot;)
+        -&gt;fetchAll();</code></pre>
+<a name="usage"></a><h3>Usage</h3>
+<p>You define your query with placeholders. A placeholder should be uppercase and start with a double dash like:   :ID, :START_DATE, :END_DATE, :USERNAME.</p>
+<pre><code>SELECT * FROM `users` WHERE id = :ID</code></pre>
+<p>Now you can bind values to the :ID placeholder with the bind methods. <strong>Caution</strong>: You don´t use the double dash in the key with the bind methods! )</p>
+<pre><code>    $database = new Database($config);
+    $database-&gt;query(&#39;SELECT * FROM `users` WHERE id = :ID&#39;)
+        -&gt;bindInt(&#39;ID&#39;, 1)</code></pre>
+<a name="bind-methods"></a><h4>Bind methods</h4>
+<p>The bind methods needs the key they should binded to and the value which should be bindet. The value must be typesafe or else it will throw an \Sindri\Database\Exception\InvalidArgumentException </p>
+<pre><code>    bindInt($key, $value)
+    bindFloat($key, $value)
+    bindString($key, $value)</code></pre>
+<p>If your query is in prepared state (Fetch-Method, execute(), prepare(...) ) and you try to bind a key, which is not known to it, it will throw an \Sindri\Database\Exception\InvalidArgumentException.</p>
+<a name="bindarray-method"></a><h3>BindArray method</h3>
+<p>The bind array method does some internal handling. It determines the type of the values and bind with the correct method. It´s also possible to bind an array with no elements. This will not break your SQL query if you write your query in the correct syntax. The syntax is</p>
+<pre><code>    &quot;SELECT * FROM `users` WHERE id IN (:IDS)&quot;</code></pre>
+<p>It´s important to understand how Array-Binding works. If you bind an array with 4 entries to the key IDS Bifröst will transform it in something like ID_0, ID_1, ID_2, ID_3 and bind its value to it. When the query get´s in prepared state (Fetch-Method, execute(), prepare(...) ), then you get an \Sindri\Database\Exception\InvalidArgumentException, if you try to reuse the query with a differend sized array!</p>
+<pre><code>    bindArray($key, $value)</code></pre>
+<a name="binddate-methods"></a><h3>BindDate methods</h3>
+<p>There are two bindDate methods. One will bind your DateTime object with <strong>your</strong> timezone setting the other one will bind your DateTime object <strong>converted</strong> to the UTC timezone. It is possible to modfy for the <strong>complete</strong> query the Date-Time-Format without changing the default Date-Time-Format of your Database. If you call setDateTimeFormat, <strong>this will change the format for the whole life-cycle</strong> (think about prepared queries!)</p>
+<pre><code>    setDateTimeFormat($format)</code></pre>
+<p>Will use your timezone settings</p>
+<pre><code>    bindDate($key, DateTime $date)</code></pre>
+<p>Will convert the date in UTC <strong>(does not modify your object!)</strong></p>
+<pre><code>    bindDateUTC($key, DateTime $date)</code></pre>
+<a name="execute-method"></a><h3>Execute method</h3>
+<p>This method is for UPDATE, INSERST, etc. which will not fetch value from the database. This method will establish a connection. After calling execute you can´t register any new &quot;actionAfterConnect&quot;. The query is also be prepared now. This is important for Array-Binding. See &quot;BindArray method&quot; for more informationen about that topic.</p>
+<pre><code>    execute()</code></pre>
+<a name="prepare-method"></a><h3>Prepare method</h3>
+<p>With the prepare method, you can prepare your sql queries for later usage. The syntax may looks a bit weired at first, so.</p>
+<p>Say we want a query which selects users which ids in the array(1,2,3,4) and a register date later then 2013-01-01. We need this query more then one time and want to prepare it.</p>
+<pre><code>    $userQuery = $database-&gt;query(&quot;SELECT * FROM `users` 
+        WHERE id IN (:IDS) and `registered` &gt; :STARTDATE&quot;)
+        -&gt;prepare(array(
+            array(&#39;IDS&#39;, 4), // Important! bindArray with key IDS and 4 entries
+            &#39;STARTDATE&#39; // The key STARTDATE is now known
+        ));
+// now we can run the prepared query like
+$userQuery-&gt;bindArray(&#39;IDS&#39;, array(1,2,3,4)
+    -&gt;bindDateUTC(&#39;STARTDATE&#39;, new Date(&#39;2013-01-01&#39;))
+    -&gt;fetchAll();</code></pre>
+<p>Puh... the method:</p>
+<pre><code>    prepare(array $bindings)</code></pre>
+<a name="fetch-methods"></a><h3>Fetch methods</h3>
+<p>How you will get your query results.</p>
+<p>This will return all the result in assoc</p>
+<pre><code>    fetchAll()</code></pre>
+<p>This will just return the first value of the first row. If there is no result, it will return the $nullValue (default &#39;&#39;)</p>
+<pre><code>    fetchValue($nullValue = &#39;&#39;)</code></pre>
+<p>Thi will return the $column as an array</p>
+<pre><code>    fetchColumn($column = 0)</code></pre>
+<p>This will return a row in assoc</p>
+<pre><code>    fetchRow()</code></pre>
+
+<a name="transactions"></a><h2>Transactions</h2>
+<p>todo (version 0.8)</p>
+
+<a name="stored-procedures"></a><h2>Stored Procedures</h2>
+<p>todo (version 0.9)</p>
+
+<a name="examples"></a><h2>Examples</h2>
+<p>Assumed the following table (users)</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th>username</th>
+<th>passwort</th>
+<th>registered</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>bill</td>
+<td>god</td>
+<td>2013-01-02 15:08:23</td>
+</tr>
+<tr>
+<td>2</td>
+<td>jack</td>
+<td>love</td>
+<td>2012-06-12 11:36:42</td>
+</tr>
+<tr>
+<td>3</td>
+<td>jones</td>
+<td>secret</td>
+<td>2013-03-07 18:44:51</td>
+</tr>
+<tr>
+<td>4</td>
+<td>seb</td>
+<td>leet</td>
+<td>2013-05-01 13:22:01</td>
+</tr>
+<tr>
+<td>5</td>
+<td>peter</td>
+<td>foo</td>
+<td>2012-04-02 01:21:03</td>
+</tr>
+<tr>
+<td>6</td>
+<td>hans</td>
+<td>nerd</td>
+<td>2012-10-12 07:38:33</td>
+</tr>
+</tbody>
+</table>
+<p>SQL (saved as example.sql)</p>
+<pre><code>CREATE TABLE [users] (
+    [id] INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+    [username] varCHAR(50)  UNIQUE NULL,
+    [password] varCHAR(32)  NULL,
+    [registered] DATETIME  NULL
+);
+
+INSERT INTO users (id, username, password, registered) VALUES (1, &#39;bill&#39;, &#39;god&#39;, &#39;2013-01-02 15:08:23&#39;);
+INSERT INTO users (id, username, password, registered) VALUES (2, &#39;jack&#39;, &#39;love&#39;, &#39;2012-06-12 11:36:42&#39;);
+INSERT INTO users (id, username, password, registered) VALUES (3, &#39;jones&#39;, &#39;secret&#39;, &#39;2013-03-07 18:44:51&#39;);
+INSERT INTO users (id, username, password, registered) VALUES (4, &#39;seb&#39;, &#39;leet&#39;, &#39;2013-05-01 13:22:01&#39;);
+INSERT INTO users (id, username, password, registered) VALUES (5, &#39;peter&#39;, &#39;foo&#39;, &#39;2012-04-02 01:21:03&#39;);
+INSERT INTO users (id, username, password, registered) VALUES (6, &#39;hans&#39;, &#39;nerd&#39;, &#39;2012-10-12 07:38:33&#39;);</code></pre>
+<p>Initialize Code</p>
+<pre><code>use \Sindri\Database\Config;
+use \Sindri\Database\Database;
+
+$config = new Config();
+$config-&gt;setDsn(&#39;sqlite::memory:&#39;);
+$db = new Database($config);
+$db-&gt;run(file_get_contents(__DIR__ . &#39;/example.sql&#39;));</code></pre>
+<p>Simple Query</p>
+<pre><code>$result = $db-&gt;query(&#39;SELECT * FROM `users` WHERE id = :ID&#39;)
+    -&gt;bindInt(&#39;ID&#39;, 2)
+    -&gt;fetchRow();
+var_dump($result);
+
+// Result
+
+array(4) {
+  &#39;id&#39; =&gt;
+  string(1) &quot;2&quot;
+  &#39;username&#39; =&gt;
+  string(4) &quot;jack&quot;
+  &#39;password&#39; =&gt;
+  string(4) &quot;love&quot;
+  &#39;registered&#39; =&gt;
+  string(19) &quot;2012-06-12 11:36:42&quot;
+}</code></pre>
+<p>More will come =)</p>
+
+</div>
+        <footer id="footer">
+            Powered by <a href="http://github.com/maximebf/beautiful-docs">beautiful-docs</a> -
+            <a href="#top">Back to top</a> - <a href="all.html">Everything on a single page</a>
+            - <a href="?print=1">Print current page</a> - <a href="all.html?print=1">Print all pages</a>
+            
+                <a href="https://github.com/sindriphp/Database" id="fork-me-on-github">Fork me on Github</a>
+            
+        </footer>
+    </div>
+</body>
+</html>
