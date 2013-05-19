@@ -5,7 +5,7 @@
 [Documentation]( http://doc.sindriphp.de/bifroest/)
 
 ### Development ###
-If you planning to run the produce the docs then you need nodejs installed and run
+If you want to produce the docs then you need nodejs installed with beautiful-docs
 
     npm install -g beautiful-docs
 
