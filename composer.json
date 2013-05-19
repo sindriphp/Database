@@ -3,7 +3,7 @@
     "description": "Database Component (Bifröst)",
     "version": "0.6.0",
     "type": "library",
-    "keywords": ["sindri", "sindriphp", "bifröst", "database"],
+    "keywords": ["sindri", "sindriphp", "bifroest", "database"],
     "homepage": "http://www.sindriphp.de",
     "license": "Apache-2.0",
     "authors": [
