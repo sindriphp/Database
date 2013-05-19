@@ -20,7 +20,9 @@ namespace Sindri\Database\Query;
 
 use \PHPUnit_Framework_TestCase;
 use \Sindri\Database\ActionQueue;
+use Sindri\Database\Config;
 use \Sindri\Database\Connection;
+use Sindri\Database\Database;
 use \Sindri\Database\Query\OpenQuery;
 use \PDO;
 use \DateTime;
@@ -63,7 +65,7 @@ class OpenQueryTest extends PHPUnit_Framework_TestCase {
      * @return OpenQuery
      */
     private function getQuery($queryString, $dateString = 'Y-m-d H:i:s') {
-        $openQuery = new OpenQuery($this->connection, $queryString, $dateString);
+        $openQuery = new OpenQuery(1, $this->connection, $queryString, $dateString);
         return new ProxyQuery($openQuery);
     }
 
@@ -194,6 +196,43 @@ class OpenQueryTest extends PHPUnit_Framework_TestCase {
                 'update' => "1950-03-03 14:03:01"
             )
         ), $result);
+    }
+
+    /**
+     * issue: statement->execute() called twice
+     *
+     * @see https://github.com/sindriphp/Database/issues/1
+     */
+    public function testStatementExecuteShouldNotCalledTwice() {
+        $pdoStatmentMock = $this->getMockBuilder('\PDOStatement')
+            ->getMock();
+        $pdoStatmentMock->expects($this->once())
+            ->method('execute')
+            ->will($this->returnValue(''));
+
+        $pdoMock = $this->getMockBuilder('\PDO')
+            ->setConstructorArgs(array('sqlite::memory:'))
+            ->getMock();
+        $pdoMock->expects($this->once())
+            ->method('prepare')
+            ->will($this->returnValue($pdoStatmentMock));
+
+        $actionQueue = new ActionQueue();
+
+        $connectionMock = $this->getMockBuilder('\Sindri\Database\Connection')
+            ->setMethods(array('connect'))
+            ->setConstructorArgs(array('', '', 'sqlite::memory:', array(), $actionQueue))
+            ->getMock();
+
+        $connectionMock
+            ->expects($this->any())
+            ->method('connect')
+            ->will($this->returnValue($pdoMock));
+
+        $openQuery = new OpenQuery(1, $connectionMock, 'SELECT * FROM users', 'Y-m-d H:i:s');
+        $query = new ProxyQuery($openQuery);
+
+        $query->fetchAll();
     }
 
 }
