@@ -1,14 +1,8 @@
 ## Database Component (Bifröst) ##
 
-[Documentation]( http://doc.sindriphp.de/bifroest/)
-
 **current version 0.6**
 
-### About ###
-todo
-
-### Features ###
-todo
+[Documentation]( http://doc.sindriphp.de/bifroest/)
 
 ### Development ###
 If you planning to run the produce the docs then you need nodejs installed and run
@@ -32,6 +26,3 @@ If you planning to run the produce the docs then you need nodejs installed and r
 > Version 1.0
 
 - advanced fetch methods (like tree, etc.)
-
-
-www.sindriphp.de_doc
