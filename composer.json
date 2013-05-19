@@ -1,0 +1,29 @@
+{
+    "name": "sindriphp/database",
+    "description": "Database Component (Bifröst)",
+    "version": "0.6.0",
+    "type": "library",
+    "keywords": ["sindri", "sindriphp", "bifröst", "database"],
+    "homepage": "http://www.sindriphp.de",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "Markus Lanz",
+            "email": "stahlstift@gmail.com",
+            "homepage": "http://www.stahlstift.de",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/sindriphp/Database/issues",
+        "source": "https://github.com/sindriphp/Database"
+    },
+    "autoload": {
+        "psr-0": {
+            "Sindri": "./src"
+        }
+    },
+    "require": {
+        "php": ">=5.3"
+    }
+}

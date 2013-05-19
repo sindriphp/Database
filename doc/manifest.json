@@ -1,0 +1,6 @@
+{
+    "title": "Database Component (Bifröst)",
+    "codeHighlightTheme": "zenburn",
+    "github": "sindriphp/Database",
+    "files": ["database.md", "query.md", "transactions.md", "storedprocedures.md", "examples.md"]
+}

@@ -1,0 +1,6 @@
+.SyncIgnore
+*.!sync
+.idea
+vendor
+doc/out
+profiling
