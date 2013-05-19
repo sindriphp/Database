@@ -1,4 +1,4 @@
-## Database Component (Bifröst) ##
+## Database Component (Bifröst) [![Build Status](https://travis-ci.org/sindriphp/Database.png?branch=master)](https://travis-ci.org/sindriphp/Database)
 
 **current version 0.6**
 
